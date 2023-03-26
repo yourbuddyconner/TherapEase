@@ -38,3 +38,4 @@ websockets==10.2
 yarl==1.7.2
 openai 
 httpx
+reportlab

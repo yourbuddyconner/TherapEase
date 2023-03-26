@@ -10,12 +10,14 @@
     </head>
     <body class="bg-gray-100">
         <div class="container mx-auto px-4">
-            <h1 class="text-4xl font-bold text-center my-8">TherapEase - Therapist Assistant</h1>
+            <img src="https://i.ibb.co/1LxWHfY/Therap-Ease-logos-transparent.png" alt="TherapEase Logo" class="mx-auto my-8" />
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="bg-white p-6 rounded-lg shadow">
                     <h2 class="text-2xl font-semibold mb-4">Live Transcription</h2>
                     <p id="status" class="text-lg mb-4">Connection status will go here</p>
                     <div id="transcript" class="text-sm whitespace-pre-wrap h-36 overflow-auto border border-gray-300 rounded p-2"></div>
+                    <!-- Download Report Button -->
+                    <a href="/download_report" class="bg-blue-500 text-white px-2 py-1 rounded text-sm mt-4 inline-block">Download Report</a>
                 </div>
                 <div class="bg-white p-6 rounded-lg shadow">
                     <h2 class="text-2xl font-semibold mb-4">Underlying Themes</h2>
@@ -31,6 +33,11 @@
         <script>
             let lastSpeaker = null;
             let lastChunk = null;
+
+            function initTooltips() {
+                const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-te-toggle="tooltip"]'));
+                tooltipTriggerList.map((tooltipTriggerEl) => new te.Tooltip(tooltipTriggerEl));
+            }
 
             navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
                 if (!MediaRecorder.isTypeSupported('audio/webm'))
@@ -56,6 +63,7 @@
                 socket.onmessage = (message) => {
                     const received = JSON.parse(message.data)
                     if (received && received.type === "new_topic") {
+                        console.log("Received new_topic event:", received);
                         const topicContainer = document.querySelector("#topics");
                         const newTopic = document.createElement("span");
                         newTopic.textContent = received.topic;
@@ -68,8 +76,10 @@
                         // reset the tooltip event listeners
                         const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-te-toggle="tooltip"]'));
                         tooltipTriggerList.map((tooltipTriggerEl) => new te.Tooltip(tooltipTriggerEl));
+                        initTooltips();
                     } 
                     else if (received && received.type === "new_entity") {
+                        console.log("Received new_entity event:", received);
                         // Every time an entity is mentioned, add or update it in the themes section, incrementing the color with each mention
                         const themesContainer = document.querySelector('#themes');
                         const existingTheme = themesContainer.querySelector(`[data-theme="${received.entity}"]`);
@@ -85,9 +95,11 @@
                             newTheme.style.backgroundColor = `hsl(${received.numOccurrences * 10}, 100%, 50%)`;
                             newTheme.className = 'bg-blue-500 text-white px-2 py-1 rounded text-sm';
                             themesContainer.appendChild(newTheme);
+                            initTooltips();
                         }
                     }
                     else if (received && received.type === "transcript") {
+                        console.log("Received transcript event:", received);
                         if (received.chunk !== lastChunk) {
                             const transcriptContainer = document.querySelector('#transcript');
                             if (lastSpeaker !== received.speaker) {
@@ -96,7 +108,6 @@
                             }
                             transcriptContainer.innerHTML += ' ' + received.chunk;
                             transcriptContainer.scrollTop = transcriptContainer.scrollHeight; // Scroll to the bottom
-                            console.log(received)
                             lastChunk = received.chunk;
                         }
                     }

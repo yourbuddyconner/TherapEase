@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Report</title>
+</head>
+<body>
+    <h1>Report</h1>
+
+    <h2>Topics</h2>
+    <ul>
+    {% for topic, data in topics.items() %}
+        <li>
+            <strong>{{ topic }}</strong> ({{ data.numOccurrences }} occurrences): {{ data.summary }}
+        </li>
+    {% endfor %}
+    </ul>
+
+    <h2>Entities</h2>
+    <ul>
+    {% for entity, data in entities.items() %}
+        <li>
+            <strong>{{ entity }}</strong> ({{ data.numOccurrences }} occurrences): {{ data.summary }}
+        </li>
+    {% endfor %}
+    </ul>
+
+    <h2>Transcript</h2>
+    <pre>{{ transcript }}</pre>
+</body>
+</html>

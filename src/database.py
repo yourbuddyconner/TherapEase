@@ -16,6 +16,7 @@ class DbType(TypedDict):
     entities: dict[str, EntityType]
 
 db: DbType = {
+    "complete_transcript": "",
     "accumulated_transcript": "",
     "running_summary": "",
     "current_topic": "",

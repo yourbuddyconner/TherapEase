@@ -25,6 +25,7 @@ async def openaiGeneration(prompt: str, parse: bool = False):
                 "stop": None,
                 "temperature": 0.5,
             },
+            timeout=20.0
         )
         response_data = response.json()
         text = response_data["choices"][0]["text"].strip()
@@ -54,6 +55,7 @@ async def openaiChatGeneration(system_prompt: str, user_prompt: str, parse: bool
                     },
                 ],
             },
+            timeout=20.0
         )
         response_data = response.json()
         content = response_data["choices"][0]["message"]["content"].strip()
