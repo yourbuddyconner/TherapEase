@@ -1,8 +1,10 @@
-# TherapEase - Make Therapy Better.
+# TherapEase - Making Therapy Easier.
 
 Use this tool to monitor a live therapy session (virtual or in person).
 Therapease will lisen to your session in real-time, take notes of your session, transcribe the conversations.
 Therapists can see a real-time dashboard highlighting the revelevant topics covered.
+As the subject of conversation changes, the topics and entitites discussed popup, so you can keep track of important topics.
+You can download a summary of session notes relevant to each topic and entity and the entire transcipt of the session.
 
 TherapEase uses a Python backend and HTML/JavaScript frontend.
 The Python backend is built with the FastAPI framework.
