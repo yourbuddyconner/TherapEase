@@ -1,6 +1,10 @@
-# TherapEase - tools to make therapy better
+# TherapEase - Make Therapy Better.
 
-We built an app called TherapEase using a Python backend and HTML/JavaScript frontend.
+Use this tool to monitor a live therapy session (virtual or in person).
+Therapease will lisen to your session in real-time, take notes of your session, transcribe the conversations.
+Therapists can see a real-time dashboard highlighting the revelevant topics covered.
+
+TherapEase uses a Python backend and HTML/JavaScript frontend.
 The Python backend is built with the FastAPI framework.
 The backend calls out to several AI models including:
 - Deepgram for streaming audio transcription and speaker diarization
