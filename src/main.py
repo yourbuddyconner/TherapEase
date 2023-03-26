@@ -5,11 +5,13 @@ from typing import Dict, Callable
 from deepgram import Deepgram
 from dotenv import load_dotenv
 import os
-from src.llm import openaiGeneration
+from src.llm import openaiGeneration, openaiChatGeneration
 from src.events import NewTopicEvent, NewEntityEvent
-from src.prompts import render_prompt, topic_change_prompt, entity_extraction_prompt
+from src.prompts import render_prompt, topic_change_prompt, topic_change_system_prompt, topic_change_user_prompt
+from src.prompts import entity_extraction_system_prompt, entity_extraction_user_prompt
+from src.prompts import entity_summary_combination_system_prompt, entity_summary_combination_user_prompt
 from src.database import db
-import openai
+import asyncio
 
 load_dotenv()
 
@@ -18,65 +20,127 @@ app = FastAPI()
 dg_client = Deepgram(os.getenv('DEEPGRAM_API_KEY'))
 templates = Jinja2Templates(directory="templates")
 
+async def extract_topic(fast_socket: WebSocket, accumulated_transcript: str):
+    print("Generating new topic...")
+    print(f"Accumulated Transcript: {db['accumulated_transcript']}")
+    topic_list = db["topics"].keys()
+    current_topic = db['current_topic']
+    try:
+        topic_summary = db["topics"][current_topic]["summary"]
+    except KeyError:
+        topic_summary = ""
+
+    # Extract topics from accumulated transcript
+    topic_user_prompt = render_prompt(
+        topic_change_user_prompt,
+        topics=", ".join(list(topic_list)),
+        topic=current_topic,
+        summary=topic_summary,
+        transcript=db['accumulated_transcript']
+    )
+    next_topic = await openaiChatGeneration(topic_change_system_prompt, topic_user_prompt, parse=True)
+    print(f"Next topic: {next_topic}")
+
+    if db["current_topic"] != next_topic['topic']:
+        db["current_topic"] = next_topic['topic']
+        if next_topic['topic'] not in db["topics"]:
+            db["topics"][next_topic['topic']] = {
+                "numOccurrences": 1,
+                "summary": next_topic['summary']
+            }
+            print(f"Summary: {next_topic['topic']}")
+        else:
+            db["topics"][next_topic['topic']]['numOccurrences'] += 1
+            db["topics"][next_topic['topic']]['summary'] = next_topic['summary']
+        new_topic_event: NewTopicEvent = {
+            'type': 'new_topic', 
+            'topic': next_topic['topic'],
+            'summary': next_topic['summary']
+        }
+        await fast_socket.send_json(new_topic_event)
+
+async def extract_entities(fast_socket: WebSocket, accumulated_transcript: str):
+    # Extract entities from accumulated transcript
+    entity_user_prompt = render_prompt(
+        entity_extraction_user_prompt,
+        entities=", ".join(list(db["entities"].keys())),
+        transcript=db['accumulated_transcript']
+    )
+    # this should be a list of dictionaries
+    next_entities = await openaiChatGeneration(entity_extraction_system_prompt, entity_user_prompt, parse=True)
+    print(f"Next entities: {next_entities}")
+
+    for entity in next_entities:
+        if entity['name'] not in db["entities"]:
+            db["entities"][entity['name']] = {
+                "numOccurrences": 1,
+                "summary": entity['summary']
+            }
+            print(f"Summary: {entity['summary']}")
+        else:
+            db["entities"][entity['name']]['numOccurrences'] += 1
+            # combine summaries
+            # entity_summary_combination_user_prompt = render_prompt(
+            #     entity_summary_combination_system_prompt,
+            #     summary1=db["entities"][entity['name']]['summary'],
+            #     summary2=entity['summary']
+            # )
+            # combined_summary = await openaiGeneration(entity_summary_combination_user_prompt)
+            # db["entities"][entity['name']]['summary'] = combined_summary
+            # print(f"Combined summary: {combined_summary}")
+        
+        new_entity_event: NewEntityEvent = {
+            'type': 'new_entity', 
+            'entity': entity['name'], 
+            'summary': db["entities"][entity['name']]['summary'],
+            'numOccurrences': db["entities"][entity['name']]['numOccurrences']
+        }
+        await fast_socket.send_json(new_entity_event)
+
 async def process_audio(fast_socket: WebSocket):
     async def get_transcript(data: Dict) -> None:
         if 'channel' in data:
-            transcript = data['channel']['alternatives'][0]['transcript']
+            words = data['channel']['alternatives'][0]['words']
+            if words:
+                speaker = None
+                transcript_chunk = ""
+                for word in words:
+                    if speaker is None or speaker != word['speaker']:
+                        if transcript_chunk:
+                            await fast_socket.send_json({
+                                "type": "transcript",
+                                "chunk": transcript_chunk.strip(),
+                                "speaker": speaker
+                            })
+                            db['accumulated_transcript'] += " " + transcript_chunk.strip()
+                        speaker = word['speaker']
+                        transcript_chunk = ""
+                    transcript_chunk += " " + word['word']
 
-            if transcript:
-                # Accumulate transcript words
-                if 'accumulated_transcript' not in db:
-                    db['accumulated_transcript'] = ""
+                # Handle the last chunk
+                if transcript_chunk:
+                    await fast_socket.send_json({
+                        "type": "transcript",
+                        "chunk": transcript_chunk.strip(),
+                        "speaker": speaker
+                    })
+                    db['accumulated_transcript'] += " " + transcript_chunk.strip()
 
-                # log state 
-
-                db['accumulated_transcript'] += " " + transcript
                 word_count = len(db['accumulated_transcript'].split())
-                
-                print(f"Transcript: {transcript}")
+
                 print(f"Word count: {word_count}")
                 print(f"Current topic: {db['current_topic']}")
 
-                # Send the current transcript chunk down to the client
-                await fast_socket.send_json({
-                    "type": "transcript",
-                    "chunk": transcript
-                })
 
-                if word_count >= 50:
-                    print("Generating new topic...")
-                    print(f"Accumulated Transcript: {db['accumulated_transcript']}")
-                    # topic list
-                    topic_list = db["topics"].keys()
-                    # Get the current topic
-                    current_topic = db['current_topic']
-                    # Get the running summary
-                    try:
-                        topic_summary = db["topics"][current_topic]["summary"]
-                    except KeyError:
-                        topic_summary = ""
-                    # Get the new topic
-                    topic_prompt = render_prompt(
-                        topic_change_prompt,
-                        topics=", ".join(list(topic_list)),
-                        topic=current_topic,
-                        summary=topic_summary,
-                        transcript=db['accumulated_transcript']
+                if word_count >= 10:
+                    topic_task = asyncio.create_task(
+                        extract_topic(fast_socket, db['accumulated_transcript'])
                     )
-                    next_topic = await openaiGeneration(topic_prompt, parse=True)
-                    print(f"Next topic: {next_topic}")
+                    entity_task = asyncio.create_task(
+                        extract_entities(fast_socket, db['accumulated_transcript'])
+                    )
+                    await asyncio.gather(topic_task, entity_task)
 
-                    if db["current_topic"] != next_topic['topic']:
-                        db["current_topic"] = next_topic['topic']
-                        if next_topic['topic'] not in db["topics"]:
-                            db["topics"][next_topic['topic']] = {
-                                "numOccurrences": 1,
-                                "summary": next_topic['summary']
-                            }
-                        new_topic_event: NewTopicEvent = {'type': 'new_topic', 'topic': next_topic['topic']}
-                        await fast_socket.send_json(new_topic_event)
-
-                    # Reset the accumulated transcript
                     db['accumulated_transcript'] = ""
 
     deepgram_socket = await connect_to_deepgram(get_transcript)
@@ -85,7 +149,7 @@ async def process_audio(fast_socket: WebSocket):
 
 async def connect_to_deepgram(transcript_received_handler: Callable[[Dict], None]):
     try:
-        socket = await dg_client.transcription.live({'punctuate': True, 'interim_results': False})
+        socket = await dg_client.transcription.live({'punctuate': True, 'interim_results': False, 'diarize': True})
         socket.registerHandler(socket.event.CLOSE, lambda c: print(f'Connection closed with code {c}.'))
         socket.registerHandler(socket.event.TRANSCRIPT_RECEIVED, transcript_received_handler)
 

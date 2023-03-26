@@ -2,7 +2,11 @@
 <html>
     <head>
         <title>Live Transcription</title>
+        <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/tw-elements/dist/css/index.min.css" />
         <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.16/dist/tailwind.min.css" rel="stylesheet">
+        <script src="https://cdn.jsdelivr.net/npm/tw-elements/dist/js/index.min.js"></script>
     </head>
     <body class="bg-gray-100">
         <div class="container mx-auto px-4">
@@ -14,13 +18,20 @@
                     <div id="transcript" class="text-sm whitespace-pre-wrap h-36 overflow-auto border border-gray-300 rounded p-2"></div>
                 </div>
                 <div class="bg-white p-6 rounded-lg shadow">
-                    <h2 class="text-2xl font-semibold mb-4">Topics Discussed</h2>
+                    <h2 class="text-2xl font-semibold mb-4">Underlying Themes</h2>
+                    <div id="themes" class="flex flex-wrap gap-2"></div>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h2 class="text-2xl font-semibold mb-4">Focus Areas</h2>
                     <div id="topics" class="flex flex-wrap gap-2"></div>
                 </div>
             </div>
         </div>
-
+        
         <script>
+            let lastSpeaker = null;
+            let lastChunk = null;
+
             navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
                 if (!MediaRecorder.isTypeSupported('audio/webm'))
                     return alert('Browser not supported')
@@ -48,16 +59,57 @@
                         const topicContainer = document.querySelector("#topics");
                         const newTopic = document.createElement("span");
                         newTopic.textContent = received.topic;
-                        newTopic.className = "bg-blue-500 text-white px-2 py-1 rounded text-sm";
+                        newTopic.setAttribute("data-te-toggle", "tooltip");
+                        newTopic.setAttribute("title", received.summary);
+                        newTopic.className = `bg-blue-500 text-white px-2 py-1 rounded text-sm relative group`;
+                        newTopic.innerHTML += `<span class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 w-56 p-2 text-sm text-gray-700 bg-white border border-gray-300 rounded mt-2">${received.summary}</span>`;
                         topicContainer.appendChild(newTopic);
-                    } else if (received && received.type === "transcript") {
-                        console.log(received)
-                        document.querySelector('#transcript').textContent += ' ' + received.chunk
+
+                        // reset the tooltip event listeners
+                        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-te-toggle="tooltip"]'));
+                        tooltipTriggerList.map((tooltipTriggerEl) => new te.Tooltip(tooltipTriggerEl));
+                    } 
+                    else if (received && received.type === "new_entity") {
+                        // Every time an entity is mentioned, add or update it in the themes section, incrementing the color with each mention
+                        const themesContainer = document.querySelector('#themes');
+                        const existingTheme = themesContainer.querySelector(`[data-theme="${received.entity}"]`);
+                        if (existingTheme) {
+                            existingTheme.textContent = `${received.entity} (${received.numOccurrences})`;
+                            existingTheme.style.backgroundColor = `hsl(${received.numOccurrences * 10}, 100%, 50%)`;
+                        } else {
+                            const newTheme = document.createElement('span');
+                            newTheme.textContent = `${received.entity} (${received.numOccurrences})`;
+                            newTheme.setAttribute('data-theme', received.entity);
+                            newTheme.setAttribute("data-te-toggle", "tooltip");
+                            newTheme.setAttribute("title", received.summary);
+                            newTheme.style.backgroundColor = `hsl(${received.numOccurrences * 10}, 100%, 50%)`;
+                            newTheme.className = 'bg-blue-500 text-white px-2 py-1 rounded text-sm';
+                            themesContainer.appendChild(newTheme);
+                        }
+                    }
+                    else if (received && received.type === "transcript") {
+                        if (received.chunk !== lastChunk) {
+                            const transcriptContainer = document.querySelector('#transcript');
+                            if (lastSpeaker !== received.speaker) {
+                                transcriptContainer.innerHTML += `<br><strong>Speaker ${received.speaker}:</strong> `;
+                                lastSpeaker = received.speaker;
+                            }
+                            transcriptContainer.innerHTML += ' ' + received.chunk;
+                            transcriptContainer.scrollTop = transcriptContainer.scrollHeight; // Scroll to the bottom
+                            console.log(received)
+                            lastChunk = received.chunk;
+                        }
+                    }
+                    else if (received && received.type === "error") {
+                        console.error(received.error);
                     }
                 }
 
                 socket.onclose = () => {
                     console.log({ event: 'onclose' })
+                    setTimeout(() => {
+                        connectWebSocket()
+                    }, 5000) // reconnect after 5 seconds
                 }
 
                 socket.onerror = (error) => {
