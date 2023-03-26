@@ -1,4 +1,13 @@
-# Live Transcription With Python and FastAPI
+# TherapEase - tools to make therapy better
+
+We built an app called TherapEase using a Python backend and HTML/JavaScript frontend.
+The Python backend is built with the FastAPI framework.
+The backend calls out to several AI models including:
+- Deepgram for streaming audio transcription and speaker diarization
+- OpenAI’s GPT-3.5-turbo for entity and topic modeling, summarization, and extraction
+Deepgram streams back audio transcriptions in chunks. The backend accumulates the chunks and sends them in batches to GPT-3.5-turbo.
+The backend streams results from the transcription and language model back to the client using an event-stream.
+The client renders the results in the user interface.
 
 To run this project create a virtual environment by running the below commands. You can learn more about setting up a virtual environment in this [article](https://developers.deepgram.com/blog/2022/02/python-virtual-environments/). 
 
