@@ -18,7 +18,7 @@ pip install -r requirements.txt
 Make sure you're in the directory with the **main.py** file and run the project in the development server.
 
 ```
-uvicorn main:app --reload
+uvicorn src.main:app --reload
 ```
 
 Pull up a browser and go to your localhost, http://127.0.0.1:8000/.
