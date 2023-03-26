@@ -1,20 +1,20 @@
 # TherapEase - Making Therapy Easier.
 
-Therapists can use this tool to monitor a live therapy session (virtual or in person).
-Therapease will listen to your session in real-time, transcribe the conversation, and highlight relevant topics.
-Therapists can see a real-time dashboard highlighting the revelevant topics covered.
-As the subject of conversation changes, the new topics and entitites discussed popup, so you can keep track of important topics.
-You can download a summary of session notes relevant to each topic and entity and the entire transcipt of the session.
+Introducing **TherapEase**: Revolutionizing Therapy for Therapists and Marginalized Communities
 
-TherapEase uses a Python backend and HTML/JavaScript frontend.
-The Python backend is built with the FastAPI framework.
-The backend calls out to several AI models including:
-- Deepgram for streaming audio transcription and speaker diarization
-- OpenAI’s GPT-3.5-turbo for entity and topic modeling, summarization, and extraction
-Deepgram streams back audio transcriptions in chunks. The backend accumulates the chunks and sends them in batches to GPT-3.5-turbo.
-The backend streams results from the transcription and language model back to the client using an event-stream.
-The client renders the results in the user interface.
+Envision a world where therapists and professionals working with marginalized communities can provide exceptional care while managing volume and quality with ease. Therapease is here to turn that vision into reality.
 
+**TherapEase** is a cutting-edge tool that empowers you to monitor live therapy sessions, whether virtual or in-person. Our innovative system listens to your session in real-time, transcribes conversations, and takes comprehensive notes. With the real-time dashboard, you'll gain valuable insights into relevant topics and entities discussed during the session, allowing you to focus on what truly matters - your clients.
+
+As conversations evolve and subject matters shift, Therapease dynamically highlights key topics and entities, ensuring you never miss crucial information. After the session, download a tailored summary of session notes and the complete transcript, streamlining your documentation process and allowing you to provide targeted support for your clients.
+
+**TherapEase** is powered by a Python backend and a sleek HTML/JavaScript frontend. The robust Python backend is crafted with the FastAPI framework and integrates with several AI models, including:
+
+- **Deepgram**: for streaming audio transcription and speaker diarization
+- **OpenAI’s GPT-3.5-turbo**: for entity and topic modeling, summarization, and extraction
+- Deepgram streams back audio transcriptions in manageable chunks, while the backend accumulates and sends them to GPT-3.5-turbo in batches. The backend then streams the results from both the transcription and language model back to the client using an event-stream, seamlessly rendering the results in the user interface.
+
+Transform your therapeutic practice and elevate the quality of care for marginalized communities with Therapease. Join the revolution and enhance your therapy sessions today.
 To run this project create a virtual environment by running the below commands. You can learn more about setting up a virtual environment in this [article](https://developers.deepgram.com/blog/2022/02/python-virtual-environments/). 
 
 ```
