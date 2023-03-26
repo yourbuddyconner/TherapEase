@@ -2,51 +2,68 @@
 <html>
     <head>
         <title>Live Transcription</title>
+        <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.16/dist/tailwind.min.css" rel="stylesheet">
     </head>
-    <body>
-        <h1>Transcribe Audio With FastAPI</h1>
-        <p id="status">Connection status will go here</p>
-        <p id="transcript"></p>
+    <body class="bg-gray-100">
+        <div class="container mx-auto px-4">
+            <h1 class="text-4xl font-bold text-center my-8">TherapEase - Therapist Assistant</h1>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h2 class="text-2xl font-semibold mb-4">Live Transcription</h2>
+                    <p id="status" class="text-lg mb-4">Connection status will go here</p>
+                    <div id="transcript" class="text-sm whitespace-pre-wrap h-36 overflow-auto border border-gray-300 rounded p-2"></div>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h2 class="text-2xl font-semibold mb-4">Topics Discussed</h2>
+                    <div id="topics" class="flex flex-wrap gap-2"></div>
+                </div>
+            </div>
+        </div>
 
         <script>
-               navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
-            if (!MediaRecorder.isTypeSupported('audio/webm'))
-                return alert('Browser not supported')
+            navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+                if (!MediaRecorder.isTypeSupported('audio/webm'))
+                    return alert('Browser not supported')
 
-            const mediaRecorder = new MediaRecorder(stream, {
-                mimeType: 'audio/webm',
-            })
+                const mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: 'audio/webm',
+                })
 
-            const socket = new WebSocket('ws://localhost:8000/listen')
+                const socket = new WebSocket('ws://localhost:8000/listen')
 
-            socket.onopen = () => {
-                document.querySelector('#status').textContent = 'Connected'
-                console.log({ event: 'onopen' })
-                mediaRecorder.addEventListener('dataavailable', async (event) => {
-                    if (event.data.size > 0 && socket.readyState == 1) {
-                        socket.send(event.data)
-                    }
-            })
-            mediaRecorder.start(250)
-            }
-
-            socket.onmessage = (message) => {
-                const received = message.data
-                if (received) {
-                    console.log(received)
-                    document.querySelector('#transcript').textContent += ' ' + received
+                socket.onopen = () => {
+                    document.querySelector('#status').textContent = 'Connected'
+                    console.log({ event: 'onopen' })
+                    mediaRecorder.addEventListener('dataavailable', async (event) => {
+                        if (event.data.size > 0 && socket.readyState == 1) {
+                            socket.send(event.data)
+                        }
+                    })
+                    mediaRecorder.start(250)
                 }
-           }
 
-           socket.onclose = () => {
-            console.log({ event: 'onclose' })
-        }
+                socket.onmessage = (message) => {
+                    const received = JSON.parse(message.data)
+                    if (received && received.type === "new_topic") {
+                        const topicContainer = document.querySelector("#topics");
+                        const newTopic = document.createElement("span");
+                        newTopic.textContent = received.topic;
+                        newTopic.className = "bg-blue-500 text-white px-2 py-1 rounded text-sm";
+                        topicContainer.appendChild(newTopic);
+                    } else if (received && received.type === "transcript") {
+                        console.log(received)
+                        document.querySelector('#transcript').textContent += ' ' + received.chunk
+                    }
+                }
 
-            socket.onerror = (error) => {
-                console.log({ event: 'onerror', error })
-            }
+                socket.onclose = () => {
+                    console.log({ event: 'onclose' })
+                }
 
-           })
+                socket.onerror = (error) => {
+                    console.log({ event: 'onerror', error })
+                }
+            })
         </script>
     </body>
 </html>

@@ -36,6 +36,13 @@ async def process_audio(fast_socket: WebSocket):
                 print(f"Transcript: {transcript}")
                 print(f"Word count: {word_count}")
                 print(f"Current topic: {db['current_topic']}")
+
+                # Send the current transcript chunk down to the client
+                await fast_socket.send_json({
+                    "type": "transcript",
+                    "chunk": transcript
+                })
+
                 if word_count >= 50:
                     print("Generating new topic...")
                     print(f"Accumulated Transcript: {db['accumulated_transcript']}")
