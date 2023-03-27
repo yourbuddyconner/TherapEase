@@ -1,3 +1,8 @@
+#### License
+
+This project is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0) License. For more information, please visit https://creativecommons.org/licenses/by-nc-sa/4.0/.
+
+
 # TherapEase - Making Therapy Easier.
 
 Introducing **TherapEase**: Revolutionizing Therapy for Therapists and Marginalized Communities
@@ -40,3 +45,4 @@ Pull up a browser and go to your localhost, http://127.0.0.1:8000/.
 
 Allow access to your microphone and start speaking. A transcript of your audio will appear in the browser. 
 
+License
